@@ -1,0 +1,254 @@
+{
+  "name": "Sync Workflow",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "a0fc1ec5-44a0-43d5-8276-3c327f943a97",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const MASTER_WORKFLOW_ID = //master wf id;\nconst TARGET_WORKFLOW_IDS = [\n  // target wf id\n];\n\nreturn [{\n  json: {\n    master_id: MASTER_WORKFLOW_ID,\n    target_ids: TARGET_WORKFLOW_IDS,\n    base_url: 'https://n8n-production-211ef.up.railway.app'\n  }\n}];"
+      },
+      "id": "ac53638a-9568-4c33-b1aa-3c6daf0cc886",
+      "name": "Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const master = $input.first().json;\nconst config = $('Config').first().json;\n\nreturn config.target_ids.map(targetId => ({\n  json: {\n    target_id: targetId,\n    master_nodes: master.nodes,\n    master_connections: master.connections,\n    master_settings: master.settings,\n    base_url: config.base_url\n  }\n}));"
+      },
+      "id": "7f5f7aed-1c87-4012-9f89-047aa8570a1d",
+      "name": "Prepare",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://n8n-production-211ef.up.railway.app/api/v1/workflows/ACMEPRXvm3pYY3tQ",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "13710427-3160-4d21-ba0c-e57126196641",
+      "name": "Get Master Workflow",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        720,
+        0
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "kuAfllLTE1evmumL",
+          "name": "Header Auth account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const master = $('Get Master Workflow').first().json;\nconst config = $('Config').first().json;\n\nreturn config.target_ids.map(targetId => ({\n  json: {\n    target_id: targetId,\n    master_nodes: master.nodes,\n    master_connections: master.connections,\n    base_url: config.base_url\n  }\n}));"
+      },
+      "id": "80987cb9-028a-4cf0-9d12-a7fa41e41acb",
+      "name": "Prepare Updates",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.base_url }}/api/v1/workflows/{{ $json.target_id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "f9d63ea2-5b5b-4671-9600-0e7698a1f2e1",
+      "name": "Get Target Workflow",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1200,
+        0
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "kuAfllLTE1evmumL",
+          "name": "Header Auth account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const targets = $('Get Target Workflow').all();\nconst preparedItems = $('Prepare Updates').all();\n\nreturn targets.map((targetItem, index) => {\n  const target = targetItem.json;\n  const preparedData = preparedItems[index].json;\n\n  const targetCredentials = {};\n  for (const node of target.nodes || []) {\n    if (node.credentials) {\n      targetCredentials[node.name] = node.credentials;\n    }\n  }\n\n  const masterNodes = preparedData.master_nodes || [];\n  const updatedNodes = masterNodes.map(node => {\n    const updatedNode = { ...node };\n    if (targetCredentials[node.name]) {\n      updatedNode.credentials = targetCredentials[node.name];\n    }\n    return updatedNode;\n  });\n\n  return {\n    json: {\n      target_id: target.id,\n      base_url: preparedData.base_url,\n      updated_workflow: {\n        name: target.name || 'Target Workflow',\n        nodes: updatedNodes,\n        connections: preparedData.master_connections || {},\n        settings: { executionOrder: \"v1\" }\n      }\n    }\n  };\n});"
+      },
+      "id": "4bfa6ac5-e5e0-4ee3-941d-31d9df783ec8",
+      "name": "Merge Logic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ $json.base_url }}/api/v1/workflows/{{ $json.target_id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.updated_workflow) }}",
+        "options": {}
+      },
+      "id": "30c76160-8704-4e15-b627-397e5905387f",
+      "name": "Update Target Workflow",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1680,
+        0
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "kuAfllLTE1evmumL",
+          "name": "Header Auth account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const results = $input.all();\nconst success = results.filter(r => r.json.id).length;\nconst failed = results.length - success;\n\nconsole.log(`✅ Successfully updated: ${success} workflows`);\nconsole.log(`❌ Failed: ${failed} workflows`);\n\nreturn [{ json: { success, failed, total: results.length, message: `Sync complete! ${success} workflows updated.` } }];"
+      },
+      "id": "629e89b7-33dd-4a7b-9349-0854629e0aab",
+      "name": "Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1920,
+        0
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Prepare",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare": {
+      "main": [
+        [
+          {
+            "node": "Get Master Workflow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Master Workflow": {
+      "main": [
+        [
+          {
+            "node": "Prepare Updates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Updates": {
+      "main": [
+        [
+          {
+            "node": "Get Target Workflow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Target Workflow": {
+      "main": [
+        [
+          {
+            "node": "Merge Logic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Logic": {
+      "main": [
+        [
+          {
+            "node": "Update Target Workflow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Target Workflow": {
+      "main": [
+        [
+          {
+            "node": "Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "480653e3-4dd0-4070-9f5f-fab0e3027dd4",
+  "meta": {
+    "instanceId": "2a46d55d4ce8c229e8610cc1e04f5d1a65e8bbac7b5a379d2d4da9697ce1b6c4"
+  },
+  "id": "gjorIgp9uhxOpuXw",
+  "tags": []
+}
