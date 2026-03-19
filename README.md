@@ -8,6 +8,6 @@ Automatically syncs all changes from the **Master Workflow** to all the **Target
 2. Run the Sync Workflow
 3. All targets updated 
 
-## Configuration
+# Configuration
 Add/remove target node ids in the Config node.
 Add the master node id in the Config node.
