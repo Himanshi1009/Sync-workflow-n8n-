@@ -14,12 +14,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const MASTER_WORKFLOW_ID = //master workflow id;
-        \nconst TARGET_WORKFLOW_IDS = [\n  // target workflow ids(can be multiple)\n];\n
-        \nreturn [{\n  json: {\n   
-        master_id: MASTER_WORKFLOW_ID,\n  
-        target_ids: TARGET_WORKFLOW_IDS,\n  
-        base_url: 'https://n8n-production-211ef.up.railway.app'\n  }\n}];"
+        "jsCode": "const MASTER_WORKFLOW_ID = //master workflow id; \nconst TARGET_WORKFLOW_IDS = [\n  // target workflow ids(can be multiple)\n];\n \nreturn [{\n  json: {\n master_id: MASTER_WORKFLOW_ID,\n  target_ids: TARGET_WORKFLOW_IDS,\n base_url: 'https://n8n-production-211ef.up.railway.app'\n  }\n}];"
       },
       "id": "ac53638a-9568-4c33-b1aa-3c6daf0cc886",
       "name": "Config",
